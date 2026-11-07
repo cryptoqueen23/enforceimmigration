@@ -6,7 +6,7 @@ workers_dev = true
 [[d1_databases]]
 binding = "DB"
 database_name = "enforceimmigration-signatures"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "43a29561-f797-4ddc-9c07-948c1bb081f0"
 
 # Configure secrets: TURNSTILE_SECRET, RESEND_API_KEY, HASH_SECRET
 # Configure vars in Cloudflare: FRONTEND_ORIGIN, API_ORIGIN, FROM_EMAIL,

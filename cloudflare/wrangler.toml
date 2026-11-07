@@ -1,0 +1,13 @@
+name = "enforceimmigration-api"
+main = "worker.js"
+compatibility_date = "2026-11-01"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "enforceimmigration-signatures"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+
+# Configure secrets: TURNSTILE_SECRET, RESEND_API_KEY, HASH_SECRET
+# Configure vars in Cloudflare: FRONTEND_ORIGIN, API_ORIGIN, FROM_EMAIL,
+# ORGANIZER_NAME, MARKETING_CONSENT_TEXT

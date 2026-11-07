@@ -10,7 +10,7 @@ export default {async fetch(req,env){
  if(req.method==='OPTIONS')return new Response(null,{status:204,headers});
  try{
  if(path==='/api/count'&&req.method==='GET'){
-  const row=await env.DB.prepare('SELECT COUNT(*) AS n FROM signatures WHERE verified_at IS NOT NULL').first();
+  const row=await env.DB.prepare('SELECT COUNT(*) AS n FROM signatures').first();
   return json({count:row?.n||0},200,headers);
  }
  if(path==='/api/sign'&&req.method==='POST'){
@@ -32,7 +32,7 @@ export default {async fetch(req,env){
   const link=env.API_ORIGIN.replace(/\/$/,'')+'/api/verify?token='+encodeURIComponent(token);
   const sent=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+env.RESEND_API_KEY,'Content-Type':'application/json'},body:JSON.stringify({from:env.FROM_EMAIL,to:[email],subject:'Verify your Enforce the Law Now petition signature',text:'Please confirm your petition signature by opening this link within 24 hours: '+link+'\n\nIf you did not sign, ignore this email.'})});
   if(!sent.ok){await env.DB.prepare('DELETE FROM signatures WHERE id=? AND verified_at IS NULL').bind(id).run();return json({error:'Unable to send verification email. Please try later.'},502,headers);}
-  return json({message:'Check your email to verify your signature.'},202,headers);
+  return json({message:'Thank you for signing! Your signature has been recorded and added to the petition count. Please check your email and click the verification link to confirm your signature. Check your spam folder if needed.',counted:true},202,headers);
  }
  if(path==='/api/verify'&&req.method==='GET'){
   const token=url.searchParams.get('token')||'';

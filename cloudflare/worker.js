@@ -2,7 +2,8 @@
 const json=(value,status=200,headers={})=>new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
 const hex=bytes=>[...new Uint8Array(bytes)].map(b=>b.toString(16).padStart(2,'0')).join('');
 async function sha(text){return hex(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text)));}
-function cors(req,env){const origin=req.headers.get('Origin');return origin&&origin===env.FRONTEND_ORIGIN?{'Access-Control-Allow-Origin':origin,'Vary':'Origin','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'Content-Type'}:{};}
+function allowedOrigin(req,env){const origin=req.headers.get('Origin');if(!origin)return false;try{const requested=new URL(origin),configured=new URL(env.FRONTEND_ORIGIN);return requested.protocol==='https:'&&configured.protocol==='https:'&&(requested.hostname===configured.hostname||requested.hostname==='www.'+configured.hostname||configured.hostname==='www.'+requested.hostname);}catch{return false;}}
+function cors(req,env){const origin=req.headers.get('Origin');return allowedOrigin(req,env)?{'Access-Control-Allow-Origin':origin,'Vary':'Origin','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'Content-Type'}:{};}
 function validEmail(s){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)&&s.length<=254;}
 export default {async fetch(req,env){
  const url=new URL(req.url),path=url.pathname,headers=cors(req,env);
@@ -13,11 +14,11 @@ export default {async fetch(req,env){
   return json({count:row?.n||0},200,headers);
  }
  if(path==='/api/sign'&&req.method==='POST'){
-  if(req.headers.get('Origin')!==env.FRONTEND_ORIGIN)return json({error:'Origin not allowed'},403,headers);
+  if(!allowedOrigin(req,env))return json({error:'Origin not allowed'},403,headers);
   if(Number(req.headers.get('content-length')||0)>10000)return json({error:'Request too large'},413,headers);
   const b=await req.json();
   const first=String(b.first_name||'').trim(),last=String(b.last_name||'').trim(),email=String(b.email||'').trim().toLowerCase(),state=String(b.state||'').trim().toUpperCase(),zip=String(b.zip||'').trim(),phone=String(b.phone||'').trim(),address=String(b.address||'').trim();
-  if(!first||first.length>80||last.length>80||! /^[+0-9(). -]{7,25}$/.test(phone)||address.length>200||typeof b.sms_opt_in!=='boolean'||!validEmail(email)||! /^[A-Z ]{2,40}$/.test(state)||! /^[A-Za-z0-9 -]{3,12}$/.test(zip)||b.petition_agreement!==true||typeof b.updates!=='boolean'||typeof b.marketing!=='boolean')return json({error:'Invalid fields or missing petition agreement'},400,headers);
+  if(!first||first.length>80||!last||last.length>80||! /^[+0-9(). -]{7,25}$/.test(phone)||!address||address.length>200||typeof b.sms_opt_in!=='boolean'||!validEmail(email)||! /^[A-Z ]{2,40}$/.test(state)||! /^[A-Za-z0-9 -]{3,12}$/.test(zip)||b.petition_agreement!==true||typeof b.updates!=='boolean'||typeof b.marketing!=='boolean')return json({error:'Invalid fields or missing petition agreement'},400,headers);
   if(!env.TURNSTILE_SECRET||!env.RESEND_API_KEY||!env.HASH_SECRET||!env.FROM_EMAIL||!env.API_ORIGIN||!env.ORGANIZER_NAME||!env.MARKETING_CONSENT_TEXT)return json({error:'Signing is not configured'},503,headers);
   const challenge=await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({secret:env.TURNSTILE_SECRET,response:String(b.turnstile||''),remoteip:req.headers.get('CF-Connecting-IP')})}).then(r=>r.json());
   if(!challenge.success)return json({error:'Bot verification failed'},400,headers);
